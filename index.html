@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LogicSpine • Universal Unit Economics Calculator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js">
+      document.getElementById('exportLiveBtn').addEventListener('click', () => exportInvestorPDF('live'));
+          document.getElementById('exportPlanBtn').addEventListener('click', () => exportInvestorPDF('planning'));
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --card: #0f172a;
+        --card2: #111827;
+        --muted: #9ca3af;
+        --accent: #38bdf8;
+        --accent2: #0ea5e9;
+        --good: #22c55e;
+        --bad: #ef4444;
+        --warn: #f59e0b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, Segoe UI, Roboto;
+        background: radial-gradient(
+            1200px 600px at 50% -200px,
+            #0b122f,
+            #020617 60%
+          ),
+          linear-gradient(180deg, #020617, var(--bg));
+        color: #e5e7eb;
+      }
+
+      header {
+        text-align: center;
+        padding: 18px 28px 28px;
+        margin-top: 10px;
+      }
+
+      header p {
+        color: var(--muted);
+      }
+
+      .container {
+        max-width: 1500px;
+        margin: auto;
+        padding: 16px;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-bottom: 20px;
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: linear-gradient(180deg, #020617 70%, rgba(2, 6, 23, 0.6));
+        padding: 10px;
+        border-bottom: 1px solid #111827;
+      }
+
+      .tab {
+        padding: 10px 18px;
+        border-radius: 999px;
+        border: 1px solid #1f2937;
+        background: #020617;
+        color: #e5e7eb;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .tab.active {
+        background: linear-gradient(180deg, var(--accent), var(--accent2));
+        color: #020617;
+        font-weight: 700;
+        box-shadow: 0 8px 22px rgba(56, 189, 248, 0.45);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      .full {
+        grid-column: 1/-1;
+      }
+
+      .card {
+        background: linear-gradient(180deg, var(--card), var(--card2));
+        border: 1px solid #1f2937;
+        border-radius: 16px;
+        padding: 18px;
+        position: relative;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      }
+
+      label {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      input,
+      textarea,
+      button,
+      select {
+        width: 100%;
+        padding: 10px 12px;
+        margin: 6px 0 14px;
+        border-radius: 10px;
+        border: 1px solid #1f2937;
+        background: #020617;
+        color: #e5e7eb;
+        transition: all 0.15s ease;
+      }
+
+      button {
+        background: linear-gradient(180deg, var(--accent), var(--accent2));
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 6px 18px rgba(56, 189, 248, 0.35);
+      }
+
+      button.secondary {
+        background: #0b1220;
+        box-shadow: none;
+        border: 1px solid #1f2937;
+      }
+
+      button.danger {
+        background: linear-gradient(180deg, #ef4444, #dc2626);
+        box-shadow: 0 6px 18px rgba(239, 68, 68, 0.35);
+      }
+
+      .metric {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px dashed #1f2937;
+        padding: 10px 0;
+        font-size: 14px;
+      }
+
+      .good {
+        color: var(--good);
+      }
+
+      .bad {
+        color: var(--bad);
+      }
+
+      .warn {
+        color: var(--warn);
+      }
+
+      .block {
+        border: 1px dashed #1f2937;
+        padding: 12px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+      }
+
+      canvas {
+        background: #020617;
+        border-radius: 14px;
+        padding: 6px;
+        border: 1px solid #111827;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .info {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 6px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #0b1220;
+        color: #38bdf8;
+        font-size: 12px;
+        cursor: help;
+        border: 1px solid #1f2937;
+      }
+
+      .tooltip {
+        display: none;
+        position: absolute;
+        background: #020617;
+        border: 1px solid #1f2937;
+        padding: 12px;
+        border-radius: 10px;
+        font-size: 12px;
+        max-width: 300px;
+        z-index: 20;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+      }
+
+      .info:hover + .tooltip,
+      .info:focus + .tooltip {
+        display: block;
+      }
+
+      footer {
+        text-align: center;
+        padding: 28px;
+        color: #9ca3af;
+        font-size: 13px;
+        border-top: 1px solid #111827;
+        margin-top: 30px;
+      }
+
+      footer a {
+        color: #38bdf8;
+        text-decoration: none;
+      }
+
+      .navbar {
+        position: static;
+        z-index: 50;
+        background: linear-gradient(180deg, #020617, #020617dd);
+        border-bottom: 1px solid #111827;
+      }
+
+      .nav-inner {
+        max-width: 1500px;
+        margin: auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+      }
+
+      .brand {
+        font-weight: 800;
+        font-size: 18px;
+        color: #38bdf8;
+        text-decoration: none;
+      }
+
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .nav-links a {
+        color: #e5e7eb;
+        text-decoration: none;
+        font-size: 14px;
+      }
+
+      .nav-links a:hover {
+        color: #38bdf8;
+      }
+
+      .nav-title {
+        font-size: 13px;
+        color: #9ca3af;
+        border-left: 1px solid #1f2937;
+        padding-left: 14px;
+        margin-right: 6px;
+      }
+
+      .nav-api {
+        font-size: 12px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px dashed #1f2937;
+        color: #9ca3af;
+      }
+
+      .slider-value {
+        font-size: 12px;
+        color: #9ca3af;
+        margin-top: -6px;
+        margin-bottom: 10px;
+      }
+
+      .result-split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      @media (max-width: 900px) {
+        .result-split {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .result-left,
+      .result-right {
+        background: transparent;
+      }
+
+      .result-left canvas {
+        margin-bottom: 12px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <nav class="navbar">
+      <div class="nav-inner">
+        <a class="brand" href="https://www.logicspine.in" target="_blank"
+          >LogicSpine</a
+        >
+        <div class="nav-links">
+          <span class="nav-title">Unit Economics Studio</span>
+          <a href="https://logicspine.in/#about" target="_blank">About</a>
+          <a href="https://logicspine.in/#contact" target="_blank">Contact</a>
+          <span class="nav-api">API</span>
+        </div>
+      </div>
+    </nav>
+
+    <header>
+      <h1>LogicSpine – Universal Unit Economics Calculator</h1>
+      <p>Finance clarity for founders • Beginner friendly • Investor ready</p>
+    </header>
+
+    <div class="container">
+      <div class="tabs">
+        <button class="tab active" data-tab="live">
+          Live / Existing Business
+        </button>
+        <button class="tab" data-tab="planning">No-Sales / Pre-Launch</button>
+        <button class="tab" data-tab="scenario">Scenario Comparison</button>
+      </div>
+
+      <!-- LIVE TAB -->
+      <div id="tab-live" class="grid">
+        <div class="card">
+          <h2>Business Type</h2>
+          <label
+            >Type <span class="info">i</span>
+            <div class="tooltip">
+              Choose Subscription for recurring revenue. Product for one-time
+              sales.
+            </div>
+          </label>
+          <select id="businessType">
+            <option value="product">One-time Product</option>
+            <option value="subscription">Subscription</option>
+          </select>
+        </div>
+
+        <div class="card hidden" id="subOnly">
+          <h2>Subscription Settings</h2>
+          <label
+            >Users leaving per month <span class="info">i</span>
+            <div class="tooltip">Paid users cancelling every month.</div>
+          </label>
+          <input id="churnInput" type="number" />
+        </div>
+
+        <div class="card">
+          <h2>Users</h2>
+          <label
+            >Paid Users <span class="info">i</span>
+            <div class="tooltip">Total paying users.</div>
+          </label>
+          <input id="paidUsers" type="number" />
+          <label id="freeUsersLabel"
+            >Free Users <span class="info">i</span>
+            <div class="tooltip">Only for freemium / subscription models.</div>
+          </label>
+          <input id="freeUsers" type="number" />
+        </div>
+
+        <div class="card full">
+          <h2>Periods (Time-based data)</h2>
+          <p style="color: #94a3b8; font-size: 13px">
+            Each period can represent days, weeks, or months. All costs here are
+            period-specific.
+          </p>
+          <div id="periods"></div>
+          <button id="addPeriodBtn">➕ Add Period</button>
+        </div>
+
+        <div class="card">
+          <h2>Global Costs</h2>
+          <label
+            >Fixed Overhead (₹) <span class="info">i</span>
+            <div class="tooltip">
+              Rent, salaries, tools, servers not tied to a single period.
+            </div>
+          </label>
+          <input id="fixedCost" type="number" />
+          <label id="freeCostLabel"
+            >Free User Cost (₹) <span class="info">i</span>
+            <div class="tooltip">Cost per free user per period.</div>
+          </label>
+          <input id="freeCost" type="number" />
+          <label
+            >Add Taxes <span class="info">i</span>
+            <div class="tooltip">GST, income tax, platform fees.</div>
+          </label>
+          <button class="secondary" id="addTaxBtn">➕ Add Tax</button>
+          <div id="taxSection"></div>
+        </div>
+
+        <div class="card full">
+          <button id="calcLiveBtn">📊 Calculate</button>
+        </div>
+
+        <div class="card full">
+          <h2>Results</h2>
+          <div class="result-split">
+            <div class="result-left">
+              <canvas id="revChart" height="140"></canvas>
+              <canvas id="cohortChart" height="140"></canvas>
+
+              <hr style="border-color: #1f2937; margin: 14px 0" />
+
+              <h3>
+                Live Simulation Result
+                <span class="info">i</span>
+                <div class="tooltip">
+                  Output after applying simulation sliders. Charts stay
+                  unchanged.
+                </div>
+              </h3>
+              <div
+                class="card"
+                id="liveFinalPriceCard"
+                style="margin-bottom: 12px"
+              >
+                <h3 style="margin-bottom: 8px">
+                  Final Product Price (After Discount)
+                </h3>
+
+                <div class="metric">
+                  <span>Customer Pays</span>
+                  <strong id="simFinalPrice">₹0</strong>
+                </div>
+              </div>
+
+              <div id="liveSimResults"></div>
+            </div>
+
+            <div
+              class="result-right"
+              style="
+                border: 1px solid #1f2937;
+                border-radius: 12px;
+                padding: 14px;
+              "
+            >
+              <div id="liveResults"></div>
+
+              <hr style="border-color: #1f2937; margin: 12px 0" />
+
+              <div class="block" id="liveSuggestions"></div>
+
+              <h3>
+                Simulation Controls
+                <span class="info">i</span>
+                <div class="tooltip">
+                  Adjust assumptions to see impact on profit & unit economics.
+                </div>
+              </h3>
+
+              <button class="secondary" onclick="resetLiveSimulation()">
+                🔄 Reset Simulation
+              </button>
+
+              <label>CAC Adjustment (₹)</label>
+              <input type="range" id="simCAC" />
+              <div class="slider-value" id="simCACValue">₹0</div>
+
+              <label>Price Adjustment (₹)</label>
+              <input type="range" id="simPrice" />
+              <div class="slider-value" id="simPriceValue">₹0</div>
+
+              <label>Fixed Cost Adjustment (₹)</label>
+              <input type="range" id="simFixed" />
+              <div class="slider-value" id="simFixedValue">₹0</div>
+              <label>
+                Discount (%)
+                <span class="info">i</span>
+                <div class="tooltip">
+                  Discount applied on selling price. This directly reduces
+                  revenue and LTV.
+                </div>
+              </label>
+
+              <input
+                type="range"
+                id="simDiscount"
+                min="0"
+                max="100"
+                step="1"
+                value="0"
+              />
+              <div class="slider-value" id="simDiscountValue">0%</div>
+            </div>
+          </div>
+
+          <div class="card full">
+            <button id="exportLiveBtn">📄 Export Investor PDF</button>
+            <div style="color: #94a3b8; font-size: 12px">
+              Generates a single non-editable PDF with charts & explanations.
+            </div>
+            <textarea id="livePrompt"></textarea>
+          </div>
+        </div>
+      </div>
+      <!-- NO SALES TAB -->
+      <div id="tab-planning" class="grid hidden">
+        <div class="card">
+          <h2>Planning Inputs</h2>
+          <label
+            >Selling Price (₹) <span class="info">i</span>
+            <div class="tooltip">
+              Price at which you plan to sell one unit to the customer.
+            </div> </label
+          ><input id="planPrice" type="number" />
+          <label
+            >Unit Cost (₹) <span class="info">i</span>
+            <div class="tooltip">
+              Cost to make or acquire one unit of the product.
+            </div> </label
+          ><input id="planUnitCost" type="number" />
+          <label
+            >Expected CAC (₹) <span class="info">i</span>
+            <div class="tooltip">
+              Estimated cost to acquire one paying customer.
+            </div> </label
+          ><input id="planCAC" type="number" />
+          <label
+            >Fixed Monthly Cost (₹) <span class="info">i</span>
+            <div class="tooltip">
+              Monthly expenses like rent, salaries, tools.
+            </div> </label
+          ><input id="planFixed" type="number" />
+        </div>
+        <div class="card full"><button id="calcPlanBtn">📊 Plan</button></div>
+        <div class="result-split">
+          <!-- LEFT: PLANNING CHART -->
+          <div class="result-left">
+            <canvas id="planChart" height="180"></canvas>
+          </div>
+
+          <!-- RIGHT: RESULTS + SIMULATION -->
+          <div class="result-right">
+            <div id="planResults"></div>
+            <div id="planSimResults"></div>
+          </div>
+        </div>
+        <div class="block">
+          <h3>
+            Planning Simulation
+            <span class="info">i</span>
+            <div class="tooltip">
+              Simulate pricing, CAC, and cost changes before launch.
+            </div>
+          </h3>
+
+          <label>
+            Price Adjustment (₹)
+            <span class="info">i</span>
+            <div class="tooltip">Test higher or lower pricing.</div>
+          </label>
+          <input type="range" id="planSimPrice" step="10" />
+          <div class="slider-value" id="planSimPriceValue">₹0</div>
+
+          <label>
+            CAC Adjustment (₹)
+            <span class="info">i</span>
+            <div class="tooltip">Test acquisition cost increase or drop.</div>
+          </label>
+          <input type="range" id="planSimCAC" step="10" />
+          <div class="slider-value" id="planSimCACValue">₹0</div>
+
+          <label>
+            Unit Cost Adjustment (₹)
+            <span class="info">i</span>
+            <div class="tooltip">
+              Simulate manufacturing or infra cost changes.
+            </div>
+          </label>
+          <input type="range" id="planSimCost" step="10" />
+          <div class="slider-value" id="planSimCostValue">₹0</div>
+
+          <button class="secondary" onclick="resetPlanSimulation()">
+            🔄 Reset Simulation
+          </button>
+        </div>
+        <div class="card full">
+          <button id="exportPlanBtn">📄 Export Investor PDF</button
+          ><textarea id="planPrompt"></textarea>
+        </div>
+      </div>
+
+      <!-- SCENARIO TAB -->
+      <div id="tab-scenario" class="grid hidden">
+        <div class="card full">
+          <h2>Base Snapshot (from Live)</h2>
+          <div id="baseSnapshot">Run Live calculation first.</div>
+        </div>
+
+        <div class="card">
+          <h2>
+            Weights <span class="info">i</span>
+            <div class="tooltip">
+              Adjust importance of profit, scalability, and risk. Must total
+              100%.
+            </div>
+          </h2>
+          <label
+            >Profit Weight (%) <span class="info">i</span>
+            <div class="tooltip">
+              How important pure profit is in final score.
+            </div> </label
+          ><input id="wProfit" type="number" value="40" />
+          <label
+            >LTV:CAC Weight (%) <span class="info">i</span>
+            <div class="tooltip">
+              Measures sustainability: lifetime value vs acquisition cost.
+            </div> </label
+          ><input id="wUnit" type="number" value="35" />
+          <label
+            >Risk Weight (%) <span class="info">i</span>
+            <div class="tooltip">
+              Accounts for churn, volatility, and uncertainty.
+            </div> </label
+          ><input id="wRisk" type="number" value="25" />
+        </div>
+
+        <div class="card">
+          <h2>Plan A (Safe)</h2>
+          <label
+            >Revenue Multiplier <span class="info">i</span>
+            <div class="tooltip">e.g. 1.1 means +10% revenue.</div>
+          </label>
+          <input
+            id="aRevMul"
+            type="number"
+            step="0.1"
+            placeholder="Recommended: 1.0"
+          />
+          <label
+            >Ads Spend Override (₹) <span class="info">i</span>
+            <div class="tooltip">Leave empty to use Live value.</div>
+          </label>
+          <input id="aAds" type="number" placeholder="Based on Live ads" />
+        </div>
+
+        <div class="card">
+          <h2>Plan B (Balanced)</h2>
+          <label>Revenue Multiplier <span class="info">i</span></label>
+          <input
+            id="bRevMul"
+            type="number"
+            step="0.1"
+            placeholder="Recommended: 1.1"
+          />
+          <label>Ads Spend Override (₹) <span class="info">i</span></label>
+          <input id="bAds" type="number" placeholder="Based on Live ads" />
+        </div>
+
+        <div class="card">
+          <h2>Plan C (Aggressive)</h2>
+          <label>Revenue Multiplier <span class="info">i</span></label>
+          <input
+            id="cRevMul"
+            type="number"
+            step="0.1"
+            placeholder="Recommended: 1.2"
+          />
+          <label>Ads Spend Override (₹) <span class="info">i</span></label>
+          <input id="cAds" type="number" placeholder="Based on Live ads" />
+        </div>
+
+        <div class="card full">
+          <button id="genScenarioBtn">Generate Scenario Comparison</button>
+        </div>
+
+        <div class="card full">
+          <h2>
+            Scenario Results <span class="info">i</span>
+            <div class="tooltip">
+              Loss-making plans are rejected automatically.
+            </div>
+          </h2>
+          <div id="scenarioResults"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      © 2025 LogicSpine •
+      <a href="https://www.logicspine.in" target="_blank">logicspine.in</a>
+    </footer>
+
+    <script>
+      // ---------- INVESTOR PDF EXPORT ----------
+      async function exportInvestorPDF(mode) {
+        if (!lastLiveData) {
+          alert("Please run Live calculation before exporting PDF.");
+          return;
+        }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF("p", "mm", "a4");
+
+        const addPageIfNeeded = () => {
+          if (y > 260) {
+            doc.addPage();
+            y = 20;
+          }
+        };
+
+        // ---------- COVER ----------
+        doc.setFontSize(20);
+        doc.text("LogicSpine – Business Review Report", 14, 28);
+        doc.setFontSize(11);
+        doc.text("Internal Review & Improvement Document", 14, 36);
+        doc.text("Generated via https://www.logicspine.in", 14, 42);
+
+        let y = 60;
+
+        // ---------- EXEC SUMMARY ----------
+        if (lastLiveData) {
+          doc.setFontSize(15);
+          doc.text("Executive Summary", 14, y);
+          y += 10;
+          doc.setFontSize(11);
+
+          const ltvCacRatio =
+            lastLiveData.CAC > 0 ? lastLiveData.LTV / lastLiveData.CAC : 0;
+          let summary = "The business performance is currently ";
+          summary += lastLiveData.profit >= 0 ? "profitable" : "loss-making";
+          summary += ". Unit economics are ";
+          summary +=
+            ltvCacRatio >= 3
+              ? "healthy."
+              : ltvCacRatio >= 1.5
+              ? "moderate."
+              : "unsustainable.";
+
+          doc.text(doc.splitTextToSize(summary, 180), 14, y);
+          y += 20;
+        }
+
+        // ---------- CORE METRICS ----------
+        if (lastLiveData) {
+          doc.setFontSize(15);
+          doc.text("Core Metrics", 14, y);
+          y += 10;
+          doc.setFontSize(11);
+
+          const line = (k, v) => {
+            doc.text(k, 14, y);
+            doc.text(v, 120, y);
+            y += 8;
+            addPageIfNeeded();
+          };
+
+          line("Total Revenue", "₹" + Math.round(lastLiveData.revenue));
+          line("Net Profit", "₹" + Math.round(lastLiveData.profit));
+          line("ARPU", "₹" + Math.round(lastLiveData.arpu));
+          line("CAC", "₹" + Math.round(lastLiveData.CAC));
+          line("LTV", "₹" + Math.round(lastLiveData.LTV));
+        }
+
+        // ---------- FLAGS ----------
+        if (lastLiveData) {
+          y += 6;
+          doc.setFontSize(15);
+          doc.text("Health Flags", 14, y);
+          y += 10;
+          doc.setFontSize(11);
+
+          const flag = (t, c) => {
+            doc.setTextColor(c[0], c[1], c[2]);
+            doc.text(t, 14, y);
+            doc.setTextColor(0, 0, 0);
+            y += 8;
+            addPageIfNeeded();
+          };
+          const ratio =
+            lastLiveData.CAC > 0 ? lastLiveData.LTV / lastLiveData.CAC : 0;
+
+          lastLiveData.profit >= 0
+            ? flag("🟢 Business is profitable", [34, 197, 94])
+            : flag("🔴 Business is loss-making", [220, 38, 38]);
+          ratio >= 3
+            ? flag("🟢 Healthy unit economics (LTV ≥ 3× CAC)", [34, 197, 94])
+            : ratio >= 1.5
+            ? flag("🟠 Unit economics need improvement", [245, 158, 11])
+            : flag("🔴 Unsustainable unit economics", [220, 38, 38]);
+          if (
+            lastLiveData.profit > 0 &&
+            lastLiveData.profit / lastLiveData.revenue < 0.15
+          ) {
+            flag("🟠 Low profit margin", [245, 158, 11]);
+          }
+        }
+
+        // ---------- SCENARIO SUMMARY ----------
+        const scenarioEl = document.getElementById("scenarioResults");
+        if (scenarioEl && scenarioEl.innerText && scenarioEl.innerText.trim()) {
+          y += 6;
+          doc.setFontSize(15);
+          doc.text("Scenario Comparison Summary", 14, y);
+          y += 10;
+          doc.setFontSize(11);
+          doc.text(
+            doc.splitTextToSize(
+              document.getElementById("scenarioResults").innerText,
+              180
+            ),
+            14,
+            y
+          );
+          y += 20;
+        }
+
+        // ---------- CHARTS ----------
+        const charts = document.querySelectorAll(
+          "#tab-live canvas, #tab-planning canvas"
+        );
+        for (const c of charts) {
+          try {
+            if (!c || c.width === 0 || c.height === 0) continue;
+            const img = c.toDataURL("image/png", 1.0);
+            addPageIfNeeded();
+            doc.addImage(img, "PNG", 14, y, 180, 60);
+            y += 70;
+          } catch (e) {
+            console.warn("Skipped chart in PDF export", e);
+          }
+        }
+
+        // ---------- ASSUMPTIONS ----------
+        addPageIfNeeded();
+        doc.setFontSize(15);
+        doc.text("Assumptions & Notes", 14, y);
+        y += 10;
+        doc.setFontSize(11);
+        const assumptions = [
+          "All calculations are based on user-entered data.",
+          "Ads, referral, and operational costs are period-based.",
+          "Taxes are applied post-profit.",
+          "Scenario scores are comparative indicators, not guarantees.",
+          "This document is intended for internal decision-making.",
+        ];
+        assumptions.forEach((a) => {
+          doc.text("• " + a, 14, y);
+          y += 7;
+          addPageIfNeeded();
+        });
+
+        doc.setFontSize(8);
+        doc.text("© 2025 LogicSpine. All rights reserved.", 14, 290);
+
+        doc.save("LogicSpine_Business_Review.pdf");
+      }
+
+      // ---------- DOM REFS ----------
+      const periods = document.getElementById("periods");
+      const taxSection = document.getElementById("taxSection");
+      const revChartEl = document.getElementById("revChart");
+      const cohortChartEl = document.getElementById("cohortChart");
+      const businessType = document.getElementById("businessType");
+      const churnInput = document.getElementById("churnInput");
+      const paidUsers = document.getElementById("paidUsers");
+      const freeUsers = document.getElementById("freeUsers");
+      const freeCost = document.getElementById("freeCost");
+      const fixedCost = document.getElementById("fixedCost");
+      const liveResults = document.getElementById("liveResults");
+      const livePrompt = document.getElementById("livePrompt");
+      const planSimPrice = document.getElementById("planSimPrice");
+      const planSimCAC = document.getElementById("planSimCAC");
+      const planSimCost = document.getElementById("planSimCost");
+
+      const planSimPriceValue = document.getElementById("planSimPriceValue");
+      const planSimCACValue = document.getElementById("planSimCACValue");
+      const planSimCostValue = document.getElementById("planSimCostValue");
+
+      let revChart = null,
+        cohortChart = null;
+      let lastLiveData = null;
+      let planBase = null;
+      let liveBase = null;
+
+      // ---------- TABS ----------
+      document.querySelectorAll(".tab").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document
+            .querySelectorAll(".tab")
+            .forEach((b) => b.classList.remove("active"));
+          document
+            .querySelectorAll('[id^="tab-"]')
+            .forEach((d) => d.classList.add("hidden"));
+          btn.classList.add("active");
+          document
+            .getElementById("tab-" + btn.dataset.tab)
+            .classList.remove("hidden");
+        });
+      });
+
+      // ---------- TOGGLES ----------
+      function toggleBusinessType() {
+        const isSub = businessType.value === "subscription";
+        document.getElementById("subOnly").classList.toggle("hidden", !isSub);
+        document
+          .getElementById("freeUsersLabel")
+          .classList.toggle("hidden", !isSub);
+        freeUsers.classList.toggle("hidden", !isSub);
+        document
+          .getElementById("freeCostLabel")
+          .classList.toggle("hidden", !isSub);
+        freeCost.classList.toggle("hidden", !isSub);
+      }
+      businessType.addEventListener("change", toggleBusinessType);
+      toggleBusinessType();
+
+      // ---------- TAX ----------
+      document.getElementById("addTaxBtn").addEventListener("click", () => {
+        const d = document.createElement("div");
+        d.className = "block";
+        d.innerHTML =
+          '<label>Tax %</label><input type="number" class="tax-input"><button class="danger">Remove</button>';
+        d.querySelector("button").addEventListener("click", () => d.remove());
+        taxSection.appendChild(d);
+      });
+
+      function resetLiveSimulation() {
+        if (!liveBase) return;
+
+        simCAC.value = 0;
+        simPrice.value = 0;
+        simFixed.value = 0;
+        simDiscount.value = 0;
+        document.getElementById("simDiscountValue").innerText = "0%";
+        document.getElementById("simFinalPrice").innerText =
+          "₹" + Math.round(liveBase.arpu);
+
+        document.getElementById("simCACValue").innerText = "₹0";
+        document.getElementById("simPriceValue").innerText = "₹0";
+        document.getElementById("simFixedValue").innerText = "₹0";
+      }
+
+      // ---------- PERIODS ----------
+      document
+        .getElementById("addPeriodBtn")
+        .addEventListener("click", addPeriod);
+      function addPeriod() {
+        const d = document.createElement("div");
+        d.className = "block";
+        d.innerHTML =
+          '<label>Days</label><input type="number">' +
+          '<label>Revenue (₹) <span class="info">i</span><div class="tooltip">Money earned in this period from sales.</div></label><input type="number">' +
+          '<label>Ads Spend (₹) <span class="info">i</span><div class="tooltip">Marketing & paid ads for this period.</div></label><input type="number" class="p-ads">' +
+          '<label>Referral Spend (₹) <span class="info">i</span><div class="tooltip">Referral or affiliate payouts.</div></label><input type="number" class="p-ref">' +
+          '<label>Servers / Tools (₹) <span class="info">i</span><div class="tooltip">Infra & SaaS costs used in this period.</div></label><input type="number" class="p-server">' +
+          '<label>Salary (₹) <span class="info">i</span><div class="tooltip">Team cost allocated to this period.</div></label><input type="number" class="p-salary">' +
+          '<button class="danger">Delete</button>';
+        d.querySelector("button").addEventListener("click", () => d.remove());
+        periods.appendChild(d);
+      }
+      addPeriod();
+
+      // ---------- LIVE CALC ----------
+      document
+        .getElementById("calcLiveBtn")
+        .addEventListener("click", processLive);
+      document
+        .getElementById("calcPlanBtn")
+        .addEventListener("click", processPlanning);
+
+      function processLive() {
+        let totalRev = 0;
+        let totalPeriodCost = 0;
+        let revPerDay = [];
+
+        [...periods.children].forEach((p) => {
+          const v = p.querySelectorAll("input");
+          const days = +v[0].value || 0;
+          const rev = +v[1].value || 0;
+          const cost =
+            (+p.querySelector(".p-ads")?.value || 0) +
+            (+p.querySelector(".p-ref")?.value || 0) +
+            (+p.querySelector(".p-server")?.value || 0) +
+            (+p.querySelector(".p-salary")?.value || 0);
+
+          totalRev += rev;
+          totalPeriodCost += cost;
+          if (days > 0) revPerDay.push((rev / days).toFixed(2));
+        });
+
+        const fixed = +fixedCost.value || 0;
+        const paid = +paidUsers.value || 0;
+        const free = +freeUsers.value || 0;
+        const freeBurn =
+          businessType.value === "subscription"
+            ? free * (+freeCost.value || 0)
+            : 0;
+
+        let profit = totalRev - (totalPeriodCost + fixed + freeBurn);
+
+        let taxPercent = 0;
+        document
+          .querySelectorAll(".tax-input")
+          .forEach((t) => (taxPercent += +t.value || 0));
+
+        const taxAmount = profit > 0 ? (profit * taxPercent) / 100 : 0;
+        profit -= taxAmount;
+
+        /* ================= CORE METRICS ================= */
+        const arpu = paid ? totalRev / paid : 0;
+        const CAC = paid ? totalPeriodCost / paid : 0;
+
+        let LTV = arpu;
+        const churn = +churnInput.value || 0;
+        if (businessType.value === "subscription" && churn > 0) {
+          LTV = arpu * (paid / churn);
+        }
+
+        /* ================= ADVANCED METRICS ================= */
+
+        // 1. Gross Profit & Margin
+        const grossProfit = totalRev - totalPeriodCost;
+        const grossMargin = totalRev ? (grossProfit / totalRev) * 100 : 0;
+
+        // 2. Contribution Margin (per user)
+        const variableCostPerUser = paid ? totalPeriodCost / paid : 0;
+        const contributionMargin = arpu - CAC;
+
+        // 3. LTV:CAC Ratio
+        const ltvCacRatio = CAC ? LTV / CAC : 0;
+
+        // 4. Payback Period (periods)
+        const paybackPeriod = arpu ? CAC / arpu : 0;
+
+        // 5. Fixed Cost Coverage
+        const fixedCoverage =
+          contributionMargin > 0 ? (contributionMargin * paid) / fixed : 0;
+
+        // 6. Monthly Burn / Cash Flow
+        const monthlyBurn = profit >= 0 ? 0 : Math.abs(profit);
+
+        // 7. Break-even Revenue
+        const breakEvenRevenue =
+          grossMargin > 0 ? fixed / (grossMargin / 100) : 0;
+
+        /* ================= STATUS FLAGS ================= */
+        const profitStatus = profit >= 0 ? "good" : "bad";
+        const cacStatus =
+          ltvCacRatio < 1 ? "bad" : ltvCacRatio < 3 ? "warn" : "good";
+
+        /* ================= CHARTS (UNCHANGED) ================= */
+        if (revChart) revChart.destroy();
+        revChart = new Chart(revChartEl, {
+          type: "line",
+          data: {
+            labels: revPerDay.map((_, i) => `P${i + 1}`),
+            datasets: [{ label: "Revenue / Day", data: revPerDay }],
+          },
+        });
+
+        if (businessType.value === "subscription") {
+          let cohort = [],
+            users = paid || 100;
+          for (let i = 0; i < 12; i++) {
+            users = Math.max(users - churn, 0);
+            cohort.push(users);
+          }
+          if (cohortChart) cohortChart.destroy();
+          cohortChart = new Chart(cohortChartEl, {
+            type: "line",
+            data: {
+              labels: [...Array(12)].map((_, i) => `M${i + 1}`),
+              datasets: [{ label: "Users Remaining", data: cohort }],
+            },
+          });
+        }
+
+        /* ================= PROMPT (SUPER IMPORTANT) ================= */
+        livePrompt.value = `
+From now on you are a Economics Expert who have free will to access the internet and research on topics, make sure each time you answer you have to think deeply what you are saying only facts are allowed no lies and only numbers and percentages and tips with proper study and dont agree with me just to be polite or supportive. Drop the filter be brutallv honest straightforward, and logical
+
+Here is LIVE BUSINESS SNAPSHOT (after tax)
+
+Revenue: ₹${Math.round(totalRev)}
+Net Profit: ₹${Math.round(profit)}
+Gross Profit: ₹${Math.round(grossProfit)}
+Gross Margin: ${grossMargin.toFixed(1)}%
+
+ARPU: ₹${arpu.toFixed(0)}
+CAC: ₹${CAC.toFixed(0)}
+LTV: ₹${LTV.toFixed(0)}
+LTV:CAC Ratio: ${ltvCacRatio.toFixed(2)}×
+
+Contribution per User: ₹${contributionMargin.toFixed(0)}
+Payback Period: ${paybackPeriod.toFixed(2)} periods
+
+Fixed Cost Coverage: ${fixedCoverage.toFixed(2)}×
+Break-even Revenue: ₹${Math.round(breakEvenRevenue)}
+Monthly Cash Burn: ₹${Math.round(monthlyBurn)}
+
+Churn: ${churn}
+Taxes Applied: ${taxPercent}%
+
+Analyze:
+1. Is this business scalable or fragile?
+2. Which lever matters most (price, CAC, churn, cost)?
+3. What should I fix FIRST to improve profit quality?
+`.trim();
+
+        // ---------- SAVE BASE SNAPSHOT (MUST COME FIRST) ----------
+        liveBase = {
+          revenue: totalRev,
+          periodCost: totalPeriodCost,
+          fixed,
+          profit,
+          arpu,
+          CAC,
+          LTV,
+          grossMargin,
+          paid,
+        };
+
+        // ---------- STORE LAST LIVE DATA ----------
+        lastLiveData = {
+          revenue: totalRev,
+          periodCost: totalPeriodCost,
+          fixed,
+          profit,
+          arpu,
+          CAC,
+          LTV,
+          grossMargin,
+          ltvCacRatio,
+        };
+
+        // ---------- UPDATE BASE SNAPSHOT UI ----------
+        document.getElementById("baseSnapshot").innerText =
+          liveResults.innerText;
+
+        // ---------- CONFIGURE SLIDERS (NOW SAFE) ----------
+        simCAC.min = -Math.round(liveBase.CAC * 0.8);
+        simCAC.max = Math.round(liveBase.CAC * 1.5);
+        simCAC.value = 0;
+
+        simPrice.min = -Math.round(liveBase.arpu * 0.5);
+        simPrice.max = Math.round(liveBase.arpu * 0.5);
+        simPrice.value = 0;
+
+        simFixed.min = -Math.round(liveBase.fixed * 0.5);
+        simFixed.max = Math.round(liveBase.fixed * 1.0);
+        simFixed.value = 0;
+
+        // ---------- RENDER BASE METRICS ----------
+        renderLiveMetrics(
+          document.getElementById("liveResults"),
+          {
+            revenue: totalRev,
+            periodCost: totalPeriodCost,
+            fixed,
+            profit,
+            arpu,
+            CAC,
+            LTV,
+            taxAmount,
+            paidUsers: paid,
+          },
+          "Base Metrics"
+        );
+
+        // ---------- SUGGESTIONS ----------
+        renderLiveSuggestions({
+          profit,
+          CAC,
+          LTV,
+          grossMargin,
+        });
+      }
+
+      function renderLiveMetrics(targetEl, data, label = "") {
+        const {
+          revenue,
+          periodCost,
+          fixed,
+          profit,
+          arpu,
+          CAC,
+          LTV,
+          taxAmount = 0,
+          paidUsers = 0,
+        } = data;
+
+        const grossProfit = revenue - periodCost;
+        const grossMargin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
+
+        const contributionPerUser = arpu - CAC;
+        const paybackPeriod =
+          contributionPerUser > 0
+            ? (CAC / contributionPerUser).toFixed(1)
+            : "∞";
+
+        const fixedCoverage =
+          contributionPerUser > 0
+            ? ((contributionPerUser * paidUsers) / fixed).toFixed(2)
+            : "0";
+
+        const breakEvenRevenue =
+          grossMargin > 0 ? (fixed / (grossMargin / 100)).toFixed(0) : "∞";
+
+        const cashBurn = profit < 0 ? Math.abs(profit) : 0;
+        const ltvCacRatio = CAC > 0 ? (LTV / CAC).toFixed(2) : "∞";
+
+        targetEl.innerHTML = `
+    ${label ? `<h4 style="margin-bottom:6px">${label}</h4>` : ""}
+
+    <div class="metric"><span>Net Profit</span><strong class="${
+      profit >= 0 ? "good" : "bad"
+    }">₹${Math.round(profit)}</strong></div>
+    <div class="metric"><span>Taxes Paid</span><strong>₹${Math.round(
+      taxAmount
+    )}</strong></div>
+
+    <div class="metric"><span>ARPU</span><strong>₹${Math.round(
+      arpu
+    )}</strong></div>
+    <div class="metric"><span>CAC</span><strong>₹${Math.round(
+      CAC
+    )}</strong></div>
+    <div class="metric"><span>LTV</span><strong>₹${Math.round(
+      LTV
+    )}</strong></div>
+    <div class="metric"><span>LTV : CAC</span><strong class="${
+      ltvCacRatio >= 3 ? "good" : ltvCacRatio >= 1.5 ? "warn" : "bad"
+    }">${ltvCacRatio}×</strong></div>
+
+    <div class="metric"><span>Gross Profit</span><strong>₹${Math.round(
+      grossProfit
+    )}</strong></div>
+    <div class="metric"><span>Gross Margin</span><strong>${grossMargin.toFixed(
+      1
+    )}%</strong></div>
+
+    <div class="metric"><span>Contribution / User</span><strong>₹${contributionPerUser.toFixed(
+      0
+    )}</strong></div>
+    <div class="metric"><span>Payback Period</span><strong>${paybackPeriod} cycles</strong></div>
+
+    <div class="metric"><span>Fixed Cost Coverage</span><strong>${fixedCoverage}×</strong></div>
+    <div class="metric"><span>Break-even Revenue</span><strong>₹${breakEvenRevenue}</strong></div>
+
+    <div class="metric"><span>Cash Burn</span><strong class="${
+      cashBurn > 0 ? "bad" : "good"
+    }">₹${cashBurn}</strong></div>
+  `;
+      }
+
+      function renderLiveSuggestions(base, sim = null) {
+        let tips = [];
+
+        // Base health checks
+        if (base.LTV / base.CAC < 1) {
+          tips.push(
+            "❌ You are losing money per customer. Stop paid acquisition immediately."
+          );
+        } else if (base.LTV / base.CAC < 3) {
+          tips.push(
+            "⚠️ Unit economics are weak. Improve pricing, retention, or reduce CAC."
+          );
+        } else {
+          tips.push("✅ Unit economics are healthy. You can scale cautiously.");
+        }
+
+        if (base.profit < 0) {
+          tips.push(
+            "🔥 You are burning cash. Focus on cost cuts or revenue per user."
+          );
+        }
+
+        if (base.grossMargin < 40) {
+          tips.push(
+            "⚠️ Gross margin is low. Revisit pricing or supplier costs."
+          );
+        }
+
+        // Compare simulation vs base
+        if (sim) {
+          if (sim.profit > base.profit) {
+            tips.push(
+              "📈 Simulation improves profitability. This direction is promising."
+            );
+          } else if (sim.profit < base.profit) {
+            tips.push("📉 Simulation hurts profitability. Avoid this change.");
+          }
+
+          if (sim.LTV / sim.CAC < base.LTV / base.CAC) {
+            tips.push(
+              "⚠️ Simulation worsens LTV:CAC ratio. Growth becomes riskier."
+            );
+          }
+        }
+
+        document.getElementById("liveSuggestions").innerHTML = `
+    <h3>What should you do next?</h3>
+    <ul style="padding-left:18px">
+      ${tips.map((t) => `<li>${t}</li>`).join("")}
+    </ul>
+  `;
+      }
+
+      function applyLiveSimulation() {
+        if (!liveBase) return;
+
+        const cacDelta = +document.getElementById("simCAC").value || 0;
+        const priceDelta = +document.getElementById("simPrice").value || 0;
+        const fixedDelta = +document.getElementById("simFixed").value || 0;
+        const discountPct =
+          (+document.getElementById("simDiscount").value || 0) / 100;
+
+        // ---------- UPDATE SLIDER LABELS ----------
+        document.getElementById("simCACValue").innerText =
+          (cacDelta >= 0 ? "+₹" : "−₹") + Math.abs(cacDelta);
+
+        document.getElementById("simPriceValue").innerText =
+          (priceDelta >= 0 ? "+₹" : "−₹") + Math.abs(priceDelta);
+
+        document.getElementById("simFixedValue").innerText =
+          (fixedDelta >= 0 ? "+₹" : "−₹") + Math.abs(fixedDelta);
+
+        document.getElementById("simDiscountValue").innerText =
+          Math.round(discountPct * 100) + "%";
+
+        // ---------- FINAL PRICE (MUST COME FIRST) ----------
+        const basePrice = liveBase.arpu + priceDelta;
+        const finalPrice = Math.max(basePrice * (1 - discountPct), 0);
+
+        document.getElementById("simFinalPrice").innerText =
+          "₹" + Math.round(finalPrice);
+
+        // ---------- ARPU DERIVED FROM FINAL PRICE ----------
+        const simARPU = finalPrice;
+
+        // ---------- OTHER SIM VALUES ----------
+        const simCAC = Math.max(liveBase.CAC + cacDelta, 0);
+        const simFixed = Math.max(liveBase.fixed + fixedDelta, 0);
+
+        const simRevenue = simARPU * liveBase.paid;
+        const simVariableCost = simCAC * liveBase.paid;
+        const simProfit = simRevenue - simVariableCost - simFixed;
+
+        const simLTV =
+          simARPU > 0 && simCAC > 0
+            ? simARPU * (liveBase.LTV / liveBase.arpu || 1)
+            : 0;
+
+        // ---------- RENDER METRICS ----------
+        renderLiveMetrics(
+          document.getElementById("liveSimResults"),
+          {
+            revenue: simRevenue,
+            periodCost: simVariableCost,
+            fixed: simFixed,
+            profit: simProfit,
+            arpu: simARPU,
+            CAC: simCAC,
+            LTV: simLTV,
+            taxAmount: 0,
+            paidUsers: liveBase.paid,
+          },
+          "Simulated Metrics"
+        );
+
+        renderLiveSuggestions(
+          {
+            profit: liveBase.profit,
+            CAC: liveBase.CAC,
+            LTV: liveBase.LTV,
+            grossMargin: liveBase.grossMargin,
+          },
+          {
+            profit: simProfit,
+            CAC: simCAC,
+            LTV: simLTV,
+          }
+        );
+      }
+
+      // ---------- SCENARIO ----------
+      document
+        .getElementById("genScenarioBtn")
+        .addEventListener("click", () => {
+          if (!lastLiveData) {
+            alert("Please calculate Live data first");
+            return;
+          }
+          const wp = +wProfit.value,
+            wu = +wUnit.value,
+            wr = +wRisk.value;
+          if (wp + wu + wr !== 100) {
+            alert("Weights must total 100%");
+            return;
+          }
+
+          function evalPlan(name, revMulInput, adsOverride) {
+            const revMul = +revMulInput || 1;
+            const revenue = lastLiveData.revenue * revMul;
+            const ads = +adsOverride || 0;
+
+            const cost =
+              (lastLiveData.periodCost || 0) + (lastLiveData.fixed || 0) + ads;
+            const profit = revenue - cost;
+
+            if (profit <= 0) {
+              return `
+        <tr>
+          <td>${name}</td>
+          <td colspan="3" class="bad">❌ Rejected (Loss)</td>
+        </tr>`;
+            }
+
+            const margin = (profit / revenue) * 100;
+            const safety =
+              margin > 25 ? "🟢 Safe" : margin > 10 ? "🟠 Risky" : "🔴 Fragile";
+
+            const score =
+              margin * 0.4 + (lastLiveData.LTV / lastLiveData.CAC) * 20 + 40;
+
+            let recommendation =
+              margin > 25
+                ? "Scale this plan cautiously."
+                : margin > 10
+                ? "Optimize before scaling."
+                : "Avoid aggressive scaling.";
+
+            return `
+      <tr>
+        <td>${name}</td>
+        <td>₹${Math.round(profit)}</td>
+        <td>${margin.toFixed(1)}%</td>
+        <td>${safety}</td>
+        <td>${recommendation}</td>
+      </tr>`;
+          }
+
+          scenarioResults.innerHTML = `<table width="100%" border="1">
+    <tr>
+      <th>Plan</th>
+      <th>Profit</th>
+      <th>Margin</th>
+      <th>Risk</th>
+      <th>Recommendation</th>
+    </tr>
+    ${evalPlan("A", aRevMul.value, aAds.value)}
+    ${evalPlan("B", bRevMul.value, bAds.value)}
+    ${evalPlan("C", cRevMul.value, cAds.value)}
+  </table>`;
+        });
+
+      function processPlanning() {
+        const price = +planPrice.value || 0;
+        const unitCost = +planUnitCost.value || 0;
+        const CAC = +planCAC.value || 0;
+        const fixed = +planFixed.value || 0;
+
+        const profitPerUser = price - unitCost - CAC;
+        const breakevenUsers =
+          profitPerUser > 0 ? Math.ceil(fixed / profitPerUser) : "Not possible";
+
+        const TOTAL_USERS = 100;
+        let paidUsers = 0,
+          freeUsers = 0;
+
+        if (profitPerUser > 0) {
+          paidUsers = Math.min(Math.ceil(fixed / profitPerUser), TOTAL_USERS);
+          freeUsers = TOTAL_USERS - paidUsers;
+        }
+
+        const maxSafeCAC = profitPerUser > 0 ? profitPerUser * 0.7 : 0;
+        const adsSpend = paidUsers * maxSafeCAC * 0.6;
+        const refSpend = paidUsers * maxSafeCAC * 0.4;
+
+        const priceUp = Math.round(price * 1.1);
+        const priceDown = Math.round(price * 0.9);
+
+        /* ================= INSIGHT LOGIC ================= */
+
+        let verdict = "";
+        let nextStep = "";
+        planBase = {
+          price,
+          unitCost,
+          CAC,
+          fixed,
+          profitPerUser,
+          breakevenUsers,
+        };
+
+        if (profitPerUser <= 0) {
+          verdict = "❌ Not viable in current form";
+          nextStep =
+            "Increase price, reduce CAC, or cut unit cost before launch.";
+        } else if (breakevenUsers > 60) {
+          verdict = "⚠️ Risky idea";
+          nextStep =
+            "Test pricing or narrow your target audience to reduce CAC.";
+        } else {
+          verdict = "✅ Viable idea";
+          nextStep = "Run demand tests with ads or waitlist before scaling.";
+        }
+
+        let primaryLever = "Price";
+        if (CAC > price * 0.4) primaryLever = "CAC";
+        if (unitCost > price * 0.4) primaryLever = "Unit Cost";
+
+        /* ================= UI ================= */
+
+        planResults.innerHTML = `
+    <div class="metric">
+      <span>Profit per user</span>
+      <strong class="${
+        profitPerUser > 0 ? "good" : "bad"
+      }">₹${profitPerUser}</strong>
+    </div>
+
+    <div class="metric">
+      <span>Users to break even</span>
+      <strong>${breakevenUsers}</strong>
+    </div>
+
+    <div class="metric">
+      <span>Paid vs Free (100 users)</span>
+      <strong>${paidUsers} paid / ${freeUsers} free</strong>
+    </div>
+
+    <div class="metric">
+      <span>Max Safe CAC</span>
+      <strong>₹${Math.round(maxSafeCAC)}</strong>
+    </div>
+
+    <div class="metric">
+      <span>Suggested Ads Spend</span>
+      <strong>₹${Math.round(adsSpend)}</strong>
+    </div>
+
+    <div class="metric">
+      <span>Suggested Referral Spend</span>
+      <strong>₹${Math.round(refSpend)}</strong>
+    </div>
+
+    <div class="metric">
+      <span>Price test range</span>
+      <strong>₹${priceDown} – ₹${priceUp}</strong>
+    </div>
+
+    <hr style="border-color:#1f2937">
+
+    <div class="metric">
+      <span>Idea Verdict</span>
+      <strong>${verdict}</strong>
+    </div>
+
+    <div class="metric">
+      <span>Primary Lever to Fix</span>
+      <strong>${primaryLever}</strong>
+    </div>
+
+    <div class="metric">
+      <span>Recommended Next Step</span>
+      <strong>${nextStep}</strong>
+    </div>
+  `;
+
+        /* ================= PROMPT ================= */
+
+        planPrompt.value = `
+From now on you are a Economics Expert who have free will to access the internet and research on topics, make sure each time you answer you have to think deeply what you are saying only facts are allowed no lies and only numbers and percentages and tips with proper study and dont agree with me just to be polite or supportive. Drop the filter be brutallv honest straightforward, and logical
+
+Here is PRE-LAUNCH ECONOMICS SUMMARY
+
+Selling price: ₹${price}
+Unit cost: ₹${unitCost}
+CAC: ₹${CAC}
+Fixed cost: ₹${fixed}
+
+Profit per user: ₹${profitPerUser}
+Break-even users: ${breakevenUsers}
+Paid users needed (100): ${paidUsers}
+Free users allowed (100): ${freeUsers}
+
+Max safe CAC: ₹${Math.round(maxSafeCAC)}
+Ads budget suggestion: ₹${Math.round(adsSpend)}
+Referral budget suggestion: ₹${Math.round(refSpend)}
+Price test range: ₹${priceDown} – ₹${priceUp}
+
+Verdict: ${verdict}
+Primary lever to improve: ${primaryLever}
+Next step: ${nextStep}
+
+Tell me how to validate this idea cheaply and reduce risk before launch, and also any tips to improve these number more
+`.trim();
+        // ---------- CONFIGURE PLANNING SLIDERS ----------
+        planSimPrice.min = -Math.round(planBase.price * 0.5);
+        planSimPrice.max = Math.round(planBase.price * 0.5);
+        planSimPrice.value = 0;
+
+        planSimCAC.min = -Math.round(planBase.CAC * 0.7);
+        planSimCAC.max = Math.round(planBase.CAC * 1.5);
+        planSimCAC.value = 0;
+
+        planSimCost.min = -Math.round(planBase.unitCost * 0.7);
+        planSimCost.max = Math.round(planBase.unitCost * 1.5);
+        planSimCost.value = 0;
+
+        // Reset labels
+        planSimPriceValue.innerText = "₹0";
+        planSimCACValue.innerText = "₹0";
+        planSimCostValue.innerText = "₹0";
+
+        // Bind simulation
+        [planSimPrice, planSimCAC, planSimCost].forEach((s) => {
+          s.oninput = applyPlanSimulation;
+        });
+      }
+
+      function applyPlanSimulation() {
+        if (!planBase) return;
+
+        const priceDelta = +planSimPrice.value || 0;
+        const cacDelta = +planSimCAC.value || 0;
+        const costDelta = +planSimCost.value || 0;
+
+        // Update labels
+        planSimPriceValue.innerText =
+          (priceDelta >= 0 ? "+₹" : "−₹") + Math.abs(priceDelta);
+        planSimCACValue.innerText =
+          (cacDelta >= 0 ? "+₹" : "−₹") + Math.abs(cacDelta);
+        planSimCostValue.innerText =
+          (costDelta >= 0 ? "+₹" : "−₹") + Math.abs(costDelta);
+
+        const simPrice = planBase.price + priceDelta;
+        const simCAC = planBase.CAC + cacDelta;
+        const simCost = planBase.unitCost + costDelta;
+
+        const simProfitPerUser = simPrice - simCAC - simCost;
+        const simBreakEven =
+          simProfitPerUser > 0
+            ? Math.ceil(planBase.fixed / simProfitPerUser)
+            : "Not possible";
+
+        let verdict =
+          simProfitPerUser <= 0
+            ? "❌ Not viable"
+            : simBreakEven > 60
+            ? "⚠️ Risky"
+            : "✅ Viable";
+
+        document.getElementById("planSimResults").innerHTML = `
+    <hr style="border-color:#1f2937">
+
+    <div class="metric">
+      <span>Simulated Profit per User</span>
+      <strong class="${simProfitPerUser > 0 ? "good" : "bad"}">
+        ₹${Math.round(simProfitPerUser)}
+      </strong>
+    </div>
+
+    <div class="metric">
+      <span>Simulated Break-even Users</span>
+      <strong>${simBreakEven}</strong>
+    </div>
+
+    <div class="metric">
+      <span>Simulated Verdict</span>
+      <strong>${verdict}</strong>
+    </div>
+  `;
+      }
+
+      function resetPlanSimulation() {
+        if (!planBase) return;
+
+        planSimPrice.value = 0;
+        planSimCAC.value = 0;
+        planSimCost.value = 0;
+
+        planSimPriceValue.innerText = "₹0";
+        planSimCACValue.innerText = "₹0";
+        planSimCostValue.innerText = "₹0";
+
+        document.getElementById("planSimResults").innerHTML = "";
+      }
+
+      /* ================= LIVE SIMULATION SLIDER WIRING ================= */
+
+      ["simCAC", "simPrice", "simFixed", "simDiscount"].forEach((id) => {
+        const slider = document.getElementById(id);
+        if (!slider) {
+          console.warn("Slider not found:", id);
+          return;
+        }
+
+        slider.addEventListener("input", () => {
+          applyLiveSimulation();
+        });
+      });
+
+      console.assert(typeof processLive === "function", "processLive missing");
+      console.assert(
+        typeof processPlanning === "function",
+        "processPlanning missing"
+      );
+    </script>
+  </body>
+</html>
